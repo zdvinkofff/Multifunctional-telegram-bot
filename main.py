@@ -1,12 +1,12 @@
 import telebot
-from PIL import Image
+from PIL import Image, ImageOps
 import io
 from telebot import types
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
-TOKEN = os.getenv('TOKEN')
+TOKEN = ''
 bot = telebot.TeleBot(TOKEN)
 
 user_states = {}  # Здесь будем хранить информацию о действиях пользователя
@@ -24,6 +24,10 @@ def resize_image(image, new_width=100):
 
 def grayify(image):
     return image.convert("L")
+
+
+def invert_colors(image):
+    return ImageOps.invert(image)
 
 
 def image_to_ascii(image_stream, new_width=40, ascii_chars=ASCII_CHARS):
@@ -92,20 +96,39 @@ def handle_ascii_chars(message):
 
 def get_options_keyboard():
     keyboard = types.InlineKeyboardMarkup()
+    negative_btn = types.InlineKeyboardButton("Негатив", callback_data="negative")
     pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
     ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
-    keyboard.add(pixelate_btn, ascii_btn)
+    keyboard.add(negative_btn, pixelate_btn, ascii_btn)
     return keyboard
 
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
-    if call.data == "pixelate":
+    if call.data == "negative":
+        bot.answer_callback_query(call.id, "Применяю негатив к вашему изображению...")
+        negative_and_send(call.message)
+    elif call.data == "pixelate":
         bot.answer_callback_query(call.id, "Pixelating your image...")
         pixelate_and_send(call.message)
     elif call.data == "ascii":
         bot.answer_callback_query(call.id, "Converting your image to ASCII art...")
         ascii_and_send(call.message)
+
+
+def negative_and_send(message):
+    photo_id = user_states[message.chat.id]['photo']
+    file_info = bot.get_file(photo_id)
+    downloaded_file = bot.download_file(file_info.file_path)
+
+    image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+    inverted = invert_colors(image)
+
+    output_stream = io.BytesIO()
+    inverted.save(output_stream, format="JPEG")
+    output_stream.seek(0)
+    bot.send_photo(message.chat.id, output_stream)
 
 
 def pixelate_and_send(message):
@@ -115,6 +138,7 @@ def pixelate_and_send(message):
 
     image_stream = io.BytesIO(downloaded_file)
     image = Image.open(image_stream)
+    image = invert_colors(image)  # Применяем инверсию цветов
     pixelated = pixelate_image(image, 20)
 
     output_stream = io.BytesIO()
@@ -130,8 +154,11 @@ def ascii_and_send(message):
     downloaded_file = bot.download_file(file_info.file_path)
 
     image_stream = io.BytesIO(downloaded_file)
+    image = Image.open(image_stream)
+    image = invert_colors(image)  # Применяем инверсию цветов
     ascii_art = image_to_ascii(image_stream, ascii_chars=ascii_chars)
     bot.send_message(message.chat.id, f"```\n{ascii_art}\n```", parse_mode="MarkdownV2")
 
 
 bot.polling(none_stop=True)
+
