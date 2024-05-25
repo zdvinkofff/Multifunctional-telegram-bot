@@ -2,13 +2,16 @@ import telebot
 from PIL import Image
 import io
 from telebot import types
+from dotenv import load_dotenv
+import os
 
-TOKEN = '<token goes here>'
+load_dotenv()
+TOKEN = os.getenv('TOKEN')
 bot = telebot.TeleBot(TOKEN)
 
-user_states = {}  # тут будем хранить информацию о действиях пользователя
+user_states = {}  # Здесь будем хранить информацию о действиях пользователя
 
-# набор символов из которых составляем изображение
+# Набор символов по умолчанию для создания ASCII-арта
 ASCII_CHARS = '@%#*+=-:. '
 
 
@@ -23,18 +26,17 @@ def grayify(image):
     return image.convert("L")
 
 
-def image_to_ascii(image_stream, new_width=40):
+def image_to_ascii(image_stream, new_width=40, ascii_chars=ASCII_CHARS):
     # Переводим в оттенки серого
     image = Image.open(image_stream).convert('L')
 
-    # меняем размер сохраняя отношение сторон
+    # Меняем размер, сохраняя соотношение сторон
     width, height = image.size
     aspect_ratio = height / float(width)
-    new_height = int(
-        aspect_ratio * new_width * 0.55)  # 0,55 так как буквы выше чем шире
+    new_height = int(aspect_ratio * new_width * 0.55)  # 0,55 так как буквы выше, чем шире
     img_resized = image.resize((new_width, new_height))
 
-    img_str = pixels_to_ascii(img_resized)
+    img_str = pixels_to_ascii(img_resized, ascii_chars)
     img_width = img_resized.width
 
     max_characters = 4000 - (new_width + 1)
@@ -47,11 +49,11 @@ def image_to_ascii(image_stream, new_width=40):
     return ascii_art
 
 
-def pixels_to_ascii(image):
+def pixels_to_ascii(image, ascii_chars=ASCII_CHARS):
     pixels = image.getdata()
     characters = ""
     for pixel in pixels:
-        characters += ASCII_CHARS[pixel * len(ASCII_CHARS) // 256]
+        characters += ascii_chars[pixel * len(ascii_chars) // 256]
     return characters
 
 
@@ -75,9 +77,17 @@ def send_welcome(message):
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
-    bot.reply_to(message, "I got your photo! Please choose what you'd like to do with it.",
+    bot.reply_to(message, "I got your photo! Please send me the set of characters you want to use for the ASCII art.")
+    user_states[message.chat.id] = {'photo': message.photo[-1].file_id, 'state': 'waiting_for_ascii_chars'}
+
+
+@bot.message_handler(func=lambda message: user_states.get(message.chat.id, {}).get('state') == 'waiting_for_ascii_chars')
+def handle_ascii_chars(message):
+    ascii_chars = message.text.strip()
+    user_states[message.chat.id]['ascii_chars'] = ascii_chars
+    bot.reply_to(message, "Got it! Please choose what you'd like to do with the image.",
                  reply_markup=get_options_keyboard())
-    user_states[message.chat.id] = {'photo': message.photo[-1].file_id}
+    user_states[message.chat.id]['state'] = 'ready'
 
 
 def get_options_keyboard():
@@ -115,11 +125,12 @@ def pixelate_and_send(message):
 
 def ascii_and_send(message):
     photo_id = user_states[message.chat.id]['photo']
+    ascii_chars = user_states[message.chat.id]['ascii_chars']
     file_info = bot.get_file(photo_id)
     downloaded_file = bot.download_file(file_info.file_path)
 
     image_stream = io.BytesIO(downloaded_file)
-    ascii_art = image_to_ascii(image_stream)
+    ascii_art = image_to_ascii(image_stream, ascii_chars=ascii_chars)
     bot.send_message(message.chat.id, f"```\n{ascii_art}\n```", parse_mode="MarkdownV2")
 
 
