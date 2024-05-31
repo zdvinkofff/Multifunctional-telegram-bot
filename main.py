@@ -31,13 +31,11 @@ def invert_colors(image):
 
 
 def image_to_ascii(image_stream, new_width=40, ascii_chars=ASCII_CHARS):
-    # Переводим в оттенки серого
     image = Image.open(image_stream).convert('L')
 
-    # Меняем размер, сохраняя соотношение сторон
     width, height = image.size
     aspect_ratio = height / float(width)
-    new_height = int(aspect_ratio * new_width * 0.55)  # 0,55 так как буквы выше, чем шире
+    new_height = int(aspect_ratio * new_width * 0.55)
     img_resized = image.resize((new_width, new_height))
 
     img_str = pixels_to_ascii(img_resized, ascii_chars)
@@ -61,7 +59,6 @@ def pixels_to_ascii(image, ascii_chars=ASCII_CHARS):
     return characters
 
 
-# Огрубляем изображение
 def pixelate_image(image, pixel_size):
     image = image.resize(
         (image.size[0] // pixel_size, image.size[1] // pixel_size),
@@ -138,7 +135,7 @@ def pixelate_and_send(message):
 
     image_stream = io.BytesIO(downloaded_file)
     image = Image.open(image_stream)
-    image = invert_colors(image)  # Применяем инверсию цветов
+    image = invert_colors(image)
     pixelated = pixelate_image(image, 20)
 
     output_stream = io.BytesIO()
