@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 import os
 import cv2
 import numpy as np
-
+import random
 
 # Загружаем токен бота Telegram из окружения
 load_dotenv()
@@ -18,6 +18,41 @@ user_states = {}
 
 # Набор ASCII-символов для создания ASCII-арта
 ASCII_CHARS = '@%#*+=-:. '
+
+# Список шуток
+JOKES = [
+    "Почему программисты всегда путают Хеллоуин и Рождество? Потому что 31 октября равно 25 декабря.",
+    "Как назвать программиста, который использует и Java, и C#? Полиглот.",
+    "Почему Java-разработчики всегда носят солнцезащитные очки? Потому что JAVA не знает оператора switch, а только if-else.",
+    "Как называется группа программистов, которые всё время спорят о языках программирования? Флейм.",
+    "Что общего между программистом и пиратом? Они оба работают с кодами."
+]
+
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    """
+    Обрабатывает команды /start и /help.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
+    bot.reply_to(message,
+                 "Отправьте мне изображение, и я предоставлю вам варианты обработки! Или введите /random_joke, чтобы получить случайную шутку.")
+
+
+@bot.message_handler(commands=['random_joke'])
+def send_random_joke(message):
+    """
+    Обрабатывает команду /random_joke и отправляет случайную шутку пользователю.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
+    # Выбираем случайную шутку из списка
+    random_joke = random.choice(JOKES)
+
+    # Отправляем шутку пользователю
+    bot.reply_to(message, random_joke)
 
 
 def resize_for_sticker(image, max_size=512):
