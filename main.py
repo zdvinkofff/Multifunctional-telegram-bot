@@ -28,6 +28,16 @@ JOKES = [
     "Что общего между программистом и пиратом? Они оба работают с кодами."
 ]
 
+# Список комплиментов
+COMPLIMENTS = [
+    "Вы выглядите потрясающе сегодня!",
+    "Ваша улыбка просто сияет!",
+    "Вы очень талантливый человек, я восхищаюсь вами.",
+    "Ваши идеи всегда такие креативные и интересные.",
+    "Вы прекрасно справляетесь со всеми задачами!"
+]
+
+
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
     """
@@ -36,8 +46,7 @@ def send_welcome(message):
     Args:
         message (telebot.types.Message): Объект сообщения.
     """
-    bot.reply_to(message,
-                 "Отправьте мне изображение, и я предоставлю вам варианты обработки! Или введите /random_joke, чтобы получить случайную шутку.")
+    bot.reply_to(message, "Привет! Выберите, что вы хотите получить: /random_joke или /random_compliment?")
 
 
 @bot.message_handler(commands=['random_joke'])
@@ -53,6 +62,21 @@ def send_random_joke(message):
 
     # Отправляем шутку пользователю
     bot.reply_to(message, random_joke)
+
+
+@bot.message_handler(commands=['random_compliment'])
+def send_random_compliment(message):
+    """
+    Обрабатывает команду /random_compliment и отправляет случайный комплимент пользователю.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
+    # Выбираем случайный комплимент из списка
+    random_compliment = random.choice(COMPLIMENTS)
+
+    # Отправляем комплимент пользователю
+    bot.reply_to(message, random_compliment)
 
 
 def resize_for_sticker(image, max_size=512):
