@@ -7,16 +7,29 @@ import os
 import cv2
 import numpy as np
 
+# Загружаем токен бота Telegram из окружения
 load_dotenv()
 TOKEN = ''
 bot = telebot.TeleBot(TOKEN)
 
+# Словарь для хранения состояний пользователей
 user_states = {}
 
+# Набор ASCII-символов для создания ASCII-арта
 ASCII_CHARS = '@%#*+=-:. '
 
 
 def resize_image(image, new_width=100):
+    """
+    Изменяет размер изображения, сохраняя пропорции.
+
+    Args:
+        image (PIL.Image): Изображение, которое нужно изменить.
+        new_width (int): Новая ширина изображения.
+
+    Returns:
+        PIL.Image: Измененное изображение.
+    """
     width, height = image.size
     ratio = height / width
     new_height = int(new_width * ratio)
@@ -24,14 +37,43 @@ def resize_image(image, new_width=100):
 
 
 def grayify(image):
+    """
+    Преобразует изображение в оттенки серого.
+
+    Args:
+        image (PIL.Image): Изображение, которое нужно преобразовать.
+
+    Returns:
+        PIL.Image: Изображение в оттенках серого.
+    """
     return image.convert("L")
 
 
 def invert_colors(image):
+    """
+    Инвертирует цвета изображения.
+
+    Args:
+        image (PIL.Image): Изображение, цвета которого нужно инвертировать.
+
+    Returns:
+        PIL.Image: Изображение с инвертированными цветами.
+    """
     return ImageOps.invert(image)
 
 
 def image_to_ascii(image_stream, new_width=40, ascii_chars=ASCII_CHARS):
+    """
+    Преобразует изображение в ASCII-арт.
+
+    Args:
+        image_stream (io.BytesIO): Поток изображения, которое нужно преобразовать.
+        new_width (int): Новая ширина ASCII-арта.
+        ascii_chars (str): Набор символов, используемых для создания ASCII-арта.
+
+    Returns:
+        str: ASCII-арт, представляющий изображение.
+    """
     image = Image.open(image_stream).convert('L')
 
     width, height = image.size
@@ -53,6 +95,16 @@ def image_to_ascii(image_stream, new_width=40, ascii_chars=ASCII_CHARS):
 
 
 def pixels_to_ascii(image, ascii_chars=ASCII_CHARS):
+    """
+    Преобразует пиксели изображения в ASCII-символы.
+
+    Args:
+        image (PIL.Image): Изображение, которое нужно преобразовать.
+        ascii_chars (str): Набор символов, используемых для преобразования.
+
+    Returns:
+        str: ASCII-символьное представление изображения.
+    """
     pixels = image.getdata()
     characters = ""
     for pixel in pixels:
@@ -61,6 +113,16 @@ def pixels_to_ascii(image, ascii_chars=ASCII_CHARS):
 
 
 def pixelate_image(image, pixel_size):
+    """
+    Пикселизует изображение.
+
+    Args:
+        image (PIL.Image): Изображение, которое нужно пикселизовать.
+        pixel_size (int): Размер пикселей в пикселизованном изображении.
+
+    Returns:
+        PIL.Image: Пикселизованное изображение.
+    """
     image = image.resize(
         (image.size[0] // pixel_size, image.size[1] // pixel_size),
         Image.NEAREST
@@ -73,6 +135,15 @@ def pixelate_image(image, pixel_size):
 
 
 def convert_to_heatmap(image_stream):
+    """
+    Преобразует изображение в тепловую карту.
+
+    Args:
+        image_stream (io.BytesIO): Поток изображения, которое нужно преобразовать.
+
+    Returns:
+        io.BytesIO: Поток изображения с тепловой картой.
+    """
     # Загрузить изображение
     image = cv2.imdecode(np.frombuffer(image_stream.read(), np.uint8), cv2.IMREAD_COLOR)
 
@@ -96,30 +167,55 @@ def convert_to_heatmap(image_stream):
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
-    bot.reply_to(message, "Send me an image, and I'll provide options for you!")
+    """
+    Обрабатывает команды /start и /help.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
+    bot.reply_to(message, "Отправьте мне изображение, и я предоставлю вам варианты обработки!")
 
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
-    bot.reply_to(message, "I got your photo! Please send me the set of characters you want to use for the ASCII art.")
+    """
+    Обрабатывает изображение, полученное от пользователя.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения, содержащий изображение.
+    """
+    bot.reply_to(message,
+                 "Я получил ваше изображение! Пожалуйста, отправьте мне набор символов, которые вы хотите использовать для ASCII-арта.")
     user_states[message.chat.id] = {'photo': message.photo[-1].file_id, 'state': 'waiting_for_ascii_chars'}
 
 
 @bot.message_handler(
     func=lambda message: user_states.get(message.chat.id, {}).get('state') == 'waiting_for_ascii_chars')
 def handle_ascii_chars(message):
+    """
+    Обрабатывает ввод пользователя для символов ASCII-арта.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения, содержащий ввод пользователя.
+    """
     ascii_chars = message.text.strip()
     user_states[message.chat.id]['ascii_chars'] = ascii_chars
-    bot.reply_to(message, "Got it! Please choose what you'd like to do with the image.",
+    bot.reply_to(message, "Понял! Выберите, что вы хотите сделать с изображением.",
                  reply_markup=get_options_keyboard())
     user_states[message.chat.id]['state'] = 'ready'
 
 
 def get_options_keyboard():
+    """
+    Создает инлайн-клавиатуру с доступными вариантами обработки изображения.
+
+    Returns:
+        telebot.types.InlineKeyboardMarkup: Инлайн-клавиатура.
+    """
     keyboard = types.InlineKeyboardMarkup()
     negative_btn = types.InlineKeyboardButton("Негатив", callback_data="negative")
-    pixelate_btn = types.InlineKeyboardButton("Pixelate", callback_data="pixelate")
-    ascii_btn = types.InlineKeyboardButton("ASCII Art", callback_data="ascii")
+    pixelate_btn = types.InlineKeyboardButton("Пикселизация", callback_data="pixelate")
+    ascii_btn = types.InlineKeyboardButton("ASCII-арт", callback_data="ascii")
     heatmap_btn = types.InlineKeyboardButton("Тепловая карта", callback_data="heatmap")
     keyboard.add(negative_btn, pixelate_btn, ascii_btn, heatmap_btn)
     return keyboard
@@ -127,21 +223,33 @@ def get_options_keyboard():
 
 @bot.callback_query_handler(func=lambda call: True)
 def callback_query(call):
+    """
+    Обрабатывает нажатия на кнопки инлайн-клавиатуры.
+
+    Args:
+        call (telebot.types.CallbackQuery): Объект запроса обратного вызова.
+    """
     if call.data == "negative":
         bot.answer_callback_query(call.id, "Применяю негатив к вашему изображению...")
         negative_and_send(call.message)
     elif call.data == "pixelate":
-        bot.answer_callback_query(call.id, "Pixelating your image...")
+        bot.answer_callback_query(call.id, "Пикселизую ваше изображение...")
         pixelate_and_send(call.message)
     elif call.data == "ascii":
-        bot.answer_callback_query(call.id, "Converting your image to ASCII art...")
+        bot.answer_callback_query(call.id, "Преобразую ваше изображение в ASCII-арт...")
         ascii_and_send(call.message)
     elif call.data == "heatmap":
-        bot.answer_callback_query(call.id, "Applying heatmap to your image...")
+        bot.answer_callback_query(call.id, "Применяю тепловую карту к вашему изображению...")
         heatmap_and_send(call.message)
 
 
 def negative_and_send(message):
+    """
+    Применяет эффект негатива к изображению и отправляет его пользователю.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
     photo_id = user_states[message.chat.id]['photo']
     file_info = bot.get_file(photo_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -157,6 +265,12 @@ def negative_and_send(message):
 
 
 def pixelate_and_send(message):
+    """
+    Применяет эффект пикселизации к изображению и отправляет его пользователю.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
     photo_id = user_states[message.chat.id]['photo']
     file_info = bot.get_file(photo_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -173,6 +287,12 @@ def pixelate_and_send(message):
 
 
 def ascii_and_send(message):
+    """
+    Преобразует изображение в ASCII-арт и отправляет его пользователю.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
     photo_id = user_states[message.chat.id]['photo']
     ascii_chars = user_states[message.chat.id]['ascii_chars']
     file_info = bot.get_file(photo_id)
@@ -186,6 +306,12 @@ def ascii_and_send(message):
 
 
 def heatmap_and_send(message):
+    """
+    Применяет эффект тепловой карты к изображению и отправляет его пользователю.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
     photo_id = user_states[message.chat.id]['photo']
     file_info = bot.get_file(photo_id)
     downloaded_file = bot.download_file(file_info.file_path)
