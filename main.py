@@ -10,7 +10,7 @@ import random
 
 # Загружаем токен бота Telegram из окружения
 load_dotenv()
-TOKEN = '7065866563:AAGRoyaXwIf85lRkxxMRP39UWkB7Qgbl_pU'
+TOKEN = ''
 bot = telebot.TeleBot(TOKEN)
 
 # Словарь для хранения состояний пользователей
