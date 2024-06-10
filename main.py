@@ -7,6 +7,7 @@ import os
 import cv2
 import numpy as np
 
+
 # Загружаем токен бота Telegram из окружения
 load_dotenv()
 TOKEN = ''
@@ -17,6 +18,40 @@ user_states = {}
 
 # Набор ASCII-символов для создания ASCII-арта
 ASCII_CHARS = '@%#*+=-:. '
+
+
+def resize_for_sticker(image, max_size=512):
+    """
+    Изменяет размер изображения, сохраняя пропорции, чтобы его максимальное измерение не превышало заданного максимума.
+
+    Args:
+        image (PIL.Image): Изображение, которое нужно изменить.
+        max_size (int): Максимальный размер изображения (по одной из сторон).
+
+    Returns:
+        PIL.Image: Измененное изображение.
+    """
+    width, height = image.size
+
+    # Определяем, какая сторона является максимальной
+    max_dimension = max(width, height)
+
+    # Если изображение и так меньше или равно заданному максимуму, возвращаем его без изменений
+    if max_dimension <= max_size:
+        return image
+
+    # Вычисляем новые размеры, сохраняя пропорции
+    if width >= height:
+        new_width = max_size
+        new_height = int(height * (max_size / width))
+    else:
+        new_height = max_size
+        new_width = int(width * (max_size / height))
+
+    # Изменяем размер изображения
+    resized_image = image.resize((new_width, new_height), resample=Image.BICUBIC)
+
+    return resized_image
 
 
 def resize_image(image, new_width=100):
