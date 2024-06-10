@@ -10,7 +10,7 @@ import random
 
 # Загружаем токен бота Telegram из окружения
 load_dotenv()
-TOKEN = ''
+TOKEN = '7065866563:AAGRoyaXwIf85lRkxxMRP39UWkB7Qgbl_pU'
 bot = telebot.TeleBot(TOKEN)
 
 # Словарь для хранения состояний пользователей
@@ -37,6 +37,99 @@ COMPLIMENTS = [
     "Вы прекрасно справляетесь со всеми задачами!"
 ]
 
+
+@bot.message_handler(commands=['start', 'help'])
+def send_welcome(message):
+    """
+    Обрабатывает команды /start и /help.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    item1 = telebot.types.KeyboardButton("/flip_a_coin")
+    item2 = telebot.types.KeyboardButton("/random_joke")
+    item3 = telebot.types.KeyboardButton("/random_compliment")
+    markup.add(item1, item2, item3)
+    bot.reply_to(message, "Привет! Выберите, что вы хотите сделать:", reply_markup=markup)
+
+
+@bot.message_handler(commands=['flip_a_coin'])
+def flip_a_coin(message):
+    """
+    Обрабатывает команду /flip_a_coin и симулирует подбрасывание монетки.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
+    # Сохраняем состояние пользователя
+    user_states[message.chat.id] = {'state': 'flipping_coin'}
+
+    # Запрашиваем подтверждение у пользователя
+    bot.reply_to(message, "Вы уверены, что хотите подбросить монетку?", reply_markup=get_confirmation_keyboard())
+
+
+def get_confirmation_keyboard():
+    """
+    Создает инлайн-клавиатуру с вариантами "Да" и "Нет".
+
+    Returns:
+        telebot.types.InlineKeyboardMarkup: Инлайн-клавиатура.
+    """
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    yes_btn = telebot.types.InlineKeyboardButton("Да", callback_data="yes")
+    no_btn = telebot.types.InlineKeyboardButton("Нет", callback_data="no")
+    keyboard.add(yes_btn, no_btn)
+    return keyboard
+
+
+@bot.callback_query_handler(func=lambda call: True)
+def callback_query(call):
+    """
+    Обрабатывает нажатия на кнопки инлайн-клавиатуры.
+
+    Args:
+        call (telebot.types.CallbackQuery): Объект запроса обратного вызова.
+    """
+    if call.data == "yes":
+        bot.answer_callback_query(call.id, "Подбрасываю монетку...")
+        do_flip_a_coin(call.message)
+    elif call.data == "no":
+        bot.answer_callback_query(call.id, "Хорошо, отменяем операцию.")
+        bot.send_message(call.message.chat.id, "Что еще вы хотите сделать?", reply_markup=get_main_menu_keyboard())
+
+
+def do_flip_a_coin(message):
+    """
+    Симулирует подбрасывание монетки и отправляет результат пользователю.
+
+    Args:
+        message (telebot.types.Message): Объект сообщения.
+    """
+    # Случайно выбираем результат - "Орел" или "Решка"
+    result = random.choice(["Орел", "Решка"])
+
+    # Отправляем результат пользователю
+    bot.reply_to(message, f"Выпало: {result}!")
+
+    # Сбрасываем состояние пользователя
+    user_states[message.chat.id] = {'state': 'main_menu'}
+    bot.send_message(message.chat.id, "Что еще вы хотите сделать?", reply_markup=get_main_menu_keyboard())
+
+
+def get_main_menu_keyboard():
+    """
+    Создает клавиатуру с основным меню.
+
+    Returns:
+        telebot.types.ReplyKeyboardMarkup: Клавиатура основного меню.
+    """
+    markup = telebot.types.ReplyKeyboardMarkup(resize_keyboard=True)
+    item1 = telebot.types.KeyboardButton("/flip_a_coin")
+    item2 = telebot.types.KeyboardButton("/random_joke")
+    item3 = telebot.types.KeyboardButton("/random_compliment")
+    markup.add(item1, item2, item3)
+    return markup
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
